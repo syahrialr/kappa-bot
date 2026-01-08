@@ -361,26 +361,38 @@ async def gemstone(interaction: discord.Interaction):
 
 @gemstone.error
 async def gemstone_error(
-    interaction: discord.Interaction,
-    error: app_commands.AppCommandError
-):
+    interaction: discord.Interaction,error: app_commands.AppCommandError):
+    # COOLDOWN
     if isinstance(error, app_commands.errors.CommandOnCooldown):
-        await interaction.response.send_message(
-            f"⏳ Command ini sedang cooldown.\n"
-            f"Coba lagi dalam **{error.retry_after:.0f} detik**.",
-            ephemeral=True
-        )
-        return
-
-    if isinstance(error, app_commands.CommandInvokeError):
-        if isinstance(error.original, Forbidden):
-            await interaction.response.send_message(
-                "❌ Bot tidak memiliki izin untuk membaca pesan di channel ini.\n"
-                "Pastikan bot memiliki **Read Message History**.",
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                f"⏳ Command ini sedang cooldown.\n"
+                f"Coba lagi dalam **{error.retry_after:.0f} detik**.",
                 ephemeral=True
             )
+        else:
+            await interaction.response.send_message(
+                f"⏳ Command ini sedang cooldown.\n"
+                f"Coba lagi dalam **{error.retry_after:.0f} detik**.",
+                ephemeral=True
+            )
+        return
+
+    # PERMISSION ERROR
+    if isinstance(error, app_commands.CommandInvokeError):
+        if isinstance(error.original, Forbidden):
+            msg = (
+                "❌ Bot tidak memiliki izin untuk membaca pesan di channel ini.\n"
+                "Pastikan bot memiliki **Read Message History**."
+            )
+
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
             return
 
+    # ERROR LAIN → BIAR KELIHATAN DI LOG
     raise error
     
 # =========================
