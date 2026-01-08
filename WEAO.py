@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from discord.errors import Forbidden
 import aiohttp
 from typing import List, Optional
 from datetime import datetime
@@ -318,21 +319,6 @@ async def gemstone(interaction: discord.Interaction):
         await msg.delete(delay=10)
         return
 
-@gemstone.error
-async def gemstone_error(
-    interaction: discord.Interaction,error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.errors.CommandOnCooldown):
-        await interaction.response.send_message(
-            f"⏳ Command ini sedang cooldown.\n"
-            f"Coba lagi dalam **{error.retry_after:.0f} detik**.",
-            ephemeral=True
-        )
-        return
-
-    # error lain → naikkan biar kelihatan di log
-    raise error
-
-
     # =========================
     # EMBED RINGKAS (CHANNEL)
     # =========================
@@ -372,6 +358,30 @@ async def gemstone_error(
     await thread.send("🗑️ Thread ini akan otomatis dihapus dalam **1 menit**")
 
     client.loop.create_task(delete_thread_later(thread, 60))
+
+@gemstone.error
+async def gemstone_error(
+    interaction: discord.Interaction,
+    error: app_commands.AppCommandError
+):
+    if isinstance(error, app_commands.errors.CommandOnCooldown):
+        await interaction.response.send_message(
+            f"⏳ Command ini sedang cooldown.\n"
+            f"Coba lagi dalam **{error.retry_after:.0f} detik**.",
+            ephemeral=True
+        )
+        return
+
+    if isinstance(error, app_commands.CommandInvokeError):
+        if isinstance(error.original, Forbidden):
+            await interaction.response.send_message(
+                "❌ Bot tidak memiliki izin untuk membaca pesan di channel ini.\n"
+                "Pastikan bot memiliki **Read Message History**.",
+                ephemeral=True
+            )
+            return
+
+    raise error
     
 # =========================
 # RUN BOT
